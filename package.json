@@ -1,5 +1,5 @@
 {
-  "name": "stream-join",
+  "name": "node-stream-join",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
