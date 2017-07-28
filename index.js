@@ -1,13 +1,10 @@
-/**
- * Created by rviscuso on 7/12/17.
- */
 
 const EventEmitter = require('events').EventEmitter;
 const PassThrough = require('stream').PassThrough;
 
 module.exports = {
 
-    join(streams, joins){
+    join(streams, joins) {
         streams = handleStreamsArg(streams);
         joins = handleJoins(joins, streams);
         let concatdStream = module.exports.concat(streams.map(s => s.stream));
@@ -27,15 +24,7 @@ module.exports = {
         });
 
         return t;
-    },
-
-
-    array2Stream: function(array){
-        const retS = new PassThrough({objectMode: true});
-        array.forEach(e => setImmediate(() => retS.push(e)));
-        setImmediate(() => retS.push(null));
-        return retS;
-    },
+    }
 };
 
 class GroupEmitter extends EventEmitter {
@@ -49,8 +38,8 @@ class GroupEmitter extends EventEmitter {
     put(group, index, value) {
         if (!this.groups[group]) this.groups[group] = [];
         let currVal = this.groups[group][index];
-        if(currVal){
-            if(!Array.isArray(currVal)){
+        if (currVal) {
+            if (!Array.isArray(currVal)) {
                 this.groups[group][index] = [currVal];
             }
             this.groups[group][index].push(value);
@@ -68,7 +57,7 @@ class GroupEmitter extends EventEmitter {
     }
 }
 
-function getGroups (concatdStream, streams, joins, emitConditionOnPut) {
+function getGroups(concatdStream, streams, joins, emitConditionOnPut) {
     let groups = new GroupEmitter(emitConditionOnPut);
     let t = new PassThrough({objectMode: true});
 
@@ -87,20 +76,15 @@ function getGroups (concatdStream, streams, joins, emitConditionOnPut) {
     });
 
     groups.on('data', group => {
-        if(shouldEmit(group, streams)){
-            group.forEach((e, i) => {
-                if(Array.isArray(e) && !streams[i].squash){
-                    e.forEach((f, j) => {
-                        let splitGroup = [...group];
-                        delete splitGroup[i];
-                        splitGroup[i] = e[j];
-                        t.push(formatGroupForEmit(splitGroup, streams, joins));
-                    })
+        if (shouldEmit(group, streams)) {
+            group = group.map((g, i) => {
+                if (Array.isArray(g)) {
+                    if (streams[i].squash) return squash(g);
                 }
-                else {
-                    t.push(formatGroupForEmit(group, streams, joins));
-                }
-            })
+                return g;
+            });
+            let splitGroups = cartesian(group);
+            splitGroups.forEach(g => t.push(formatGroupForEmit(g, streams, joins)))
         }
     });
 
@@ -120,52 +104,71 @@ function shouldEmit(group, streams) {
     let mkeys = missingKeys(group, streams.length);
     return mkeys.length === 0 || mkeys.every(k => streams[k].nullable);
 
-    function missingKeys(group, n){
+    function missingKeys(group, n) {
         let res = [];
-        for(let i=0; i < n; i++){
-            if(!group[i]) res.push(i);
+        for (let i = 0; i < n; i++) {
+            if (!group[i]) res.push(i);
         }
         return res;
     }
 }
 
 function formatGroupForEmit(group, streams, joins) {
-    let res = {};
-    group.forEach((e, i) => {
-        if(!streams[i].includeJoinField) joins.forEach(j => delete e[j[i]]);
-        if(Array.isArray(e)) {
-            if(streams[i].squash) e = squash(e);
-        }
-        res = Object.assign(res, streams[i].alias? {[streams[i].alias]: e} : e)
-    });
-    return res;
+    return group.reduce(
+        (m, c, i) => {
+            let d = Object.assign({}, c);
+            if (streams[i].omitJoinField) joins.forEach(j => delete d[j[i]]);
+            return Object.assign(m, streams[i].alias ? {[streams[i].alias]: d} : d)
+        },
+        {}
+    )
 }
 
-function squash(array){
-    let res = {};
-    array.forEach(e => {
-        Object.keys(e).forEach(k => {
-            if(res[k]){
-                if(!Array.isArray(res[k]) && res[k] !== e[k]) res[k] = [res[k]];
-                if(res[k].indexOf(e[k]) < 0)res[k].push(e[k]);
-            }
-            else {
-                res[k] = e[k];
-            }
-        })
-    });
-    return res;
+function squash(array) {
+    return array.reduce(
+        (m, e) => {
+            Object.keys(e).forEach(k => {
+                if (m[k]) {
+                    if (!Array.isArray(m[k]) && m[k] !== e[k]) m[k] = [m[k]];
+                    if (m[k].indexOf(e[k]) < 0) m[k].push(e[k]);
+                }
+                else {
+                    m[k] = e[k];
+                }
+            });
+            return m;
+        },
+        {});
+}
+
+function cartesian(arrays) {
+    return arrays.reduce((a, b) => {
+        if (!Array.isArray(b)) b = [b];
+        return flatten(a.map((x) => {
+            return b.map((y) => {
+                return x.concat([y]);
+            });
+        }), true);
+    }, [[]]);
+}
+
+function flatten(array) {
+    return array.reduce((m, c) => m.concat(c), [])
 }
 
 function handleStreamsArg(streams) {
     const ERR_MSG = 'streams must be an array of streams or stream definition objects.';
     if (!Array.isArray(streams)) throw new Error(ERR_MSG);
     if (streams.every(s => isStream(s))) {
-        streams = streams.map(s => {return {
-            stream: s
-        }});
+        streams = streams.map(s => {
+            return {
+                stream: s
+            }
+        });
         // Include the join field only for the left
-        streams[0].includeJoinField = true;
+        for (let i = 1; i < streams.length; i++) {
+            streams[i].omitJoinField = true;
+        }
     }
     else if (!streams.every(s => isStreamDef(s))) {
         throw new Error(ERR_MSG);
@@ -179,10 +182,12 @@ function handleJoins(joins, streams) {
     if (!(joins.every(j => j.length === n && (isJoin(j) || isJoinDef(j))))) {
         throw new Error('Each join must contain a number of string elements equal to the number of streams: ' + n);
     }
-    if(joins.every(j => isJoin(j))){
-        joins = joins.map(j => {return {
-            join: j
-        }})
+    if (joins.every(j => isJoin(j))) {
+        joins = joins.map(j => {
+            return {
+                join: j
+            }
+        })
     }
     else if (!joins.every(s => isJoinDef(s))) {
         throw new Error('joins must be an array of arrays or join objects.');
@@ -190,11 +195,11 @@ function handleJoins(joins, streams) {
     return joins;
 }
 
-function isJoin(o){
+function isJoin(o) {
     return Array.isArray(o) && o.every(j => typeof j === 'string')
 }
 
-function isJoinDef(o){
+function isJoinDef(o) {
     return typeof(o) === 'object' && o.join && o.join.every(j => isJoinSet(j));
 }
 
@@ -207,5 +212,5 @@ function isStreamDef(o) {
         (!o.alias || typeof o.alias === 'string') &&
         (!o.nullable || typeof o.nullable === 'boolean') &&
         (!o.squash || typeof o.squash === 'boolean') &&
-        (!o.includeJoinField || typeof o.includeJoinField === 'boolean');
+        (!o.omitJoinField || typeof o.omitJoinField === 'boolean');
 }
