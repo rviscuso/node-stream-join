@@ -10,7 +10,8 @@
     "chai": "^4.2.0",
     "highland": "^2.13.0",
     "istanbul": "^0.4.5",
-    "mocha": "^5.2.0"
+    "mocha": "^5.2.0",
+    "prettier": "^1.15.3"
   },
   "scripts": {
     "test": "node_modules/mocha/bin/mocha test"

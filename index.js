@@ -1,30 +1,34 @@
 
 const EventEmitter = require('events').EventEmitter;
 const PassThrough = require('stream').PassThrough;
+const { squash, flatten, cartesian } = require('./array-utils');
 
-module.exports = {
+function concat(streams, addIndex) {
+    let t = new PassThrough({ objectMode: true });
+    let counter = streams.length;
 
-    join(streams, joins) {
-        streams = handleStreamsArg(streams);
-        joins = handleJoins(joins, streams);
-        let concatdStream = module.exports.concat(streams.map(s => s.stream));
-        return getGroups(concatdStream, streams, joins.map(j => j.join));
-    },
+    streams.forEach((s, i) => {
+        s.on('data', x => setImmediate(() => {
+            if (addIndex) t.push([i, x]);
+            else t.push(x);
+        }));
+        s.on('error', err => setImmediate(() => t.emit('error', err)));
+        s.on('end', () => {
+            if (counter-- <= 1) setImmediate(() => t.push(null))
+        })
+    });
 
-    concat: function (streams) {
-        let t = new PassThrough({objectMode: true});
-        let counter = streams.length;
+    return t;
+}
 
-        streams.forEach((s, i) => {
-            s.on('data', x => setImmediate(() => t.push([i, x])));
-            s.on('error', err => setImmediate(() => t.emit('error', err)));
-            s.on('end', () => {
-                if (counter-- <= 1) setImmediate(() => t.push(null))
-            })
-        });
-
-        return t;
+module.exports = (streams, joins) => {
+    streams = handleStreamsArg(streams);
+    if (!joins) {
+        return concat(streams.map(s => s.stream), false);
     }
+    let concatdStream = concat(streams.map(s => s.stream), true);
+    joins = handleJoins(joins, streams);
+    return getGroups(concatdStream, streams, joins.map(j => j.join));
 };
 
 class GroupEmitter extends EventEmitter {
@@ -59,7 +63,7 @@ class GroupEmitter extends EventEmitter {
 
 function getGroups(concatdStream, streams, joins, emitConditionOnPut) {
     let groups = new GroupEmitter(emitConditionOnPut);
-    let t = new PassThrough({objectMode: true});
+    let t = new PassThrough({ objectMode: true });
 
     concatdStream.on('data', x => {
         let idx = x[0];
@@ -118,42 +122,10 @@ function formatGroupForEmit(group, streams, joins) {
         (m, c, i) => {
             let d = Object.assign({}, c);
             if (streams[i].omitJoinField) joins.forEach(j => delete d[j[i]]);
-            return Object.assign(m, streams[i].alias ? {[streams[i].alias]: d} : d)
+            return Object.assign(m, streams[i].alias ? { [streams[i].alias]: d } : d)
         },
         {}
     )
-}
-
-function squash(array) {
-    return array.reduce(
-        (m, e) => {
-            Object.keys(e).forEach(k => {
-                if (m[k]) {
-                    if (!Array.isArray(m[k]) && m[k] !== e[k]) m[k] = [m[k]];
-                    if (m[k].indexOf(e[k]) < 0) m[k].push(e[k]);
-                }
-                else {
-                    m[k] = e[k];
-                }
-            });
-            return m;
-        },
-        {});
-}
-
-function cartesian(arrays) {
-    return arrays.reduce((a, b) => {
-        if (!Array.isArray(b)) b = [b];
-        return flatten(a.map((x) => {
-            return b.map((y) => {
-                return x.concat([y]);
-            });
-        }), true);
-    }, [[]]);
-}
-
-function flatten(array) {
-    return array.reduce((m, c) => m.concat(c), [])
 }
 
 function handleStreamsArg(streams) {
@@ -178,8 +150,16 @@ function handleStreamsArg(streams) {
 
 function handleJoins(joins, streams) {
     const n = streams.length;
-    if (!Array.isArray(joins)) throw new Error('joins must be an array of arrays.');
-    if (!(joins.every(j => j.length === n && (isJoin(j) || isJoinDef(j))))) {
+    if (!Array.isArray(joins)) {
+        joins = [joins]
+    }
+    joins = joins.map(j => {
+        if (typeof j === 'string' || j instanceof String) {
+            return new Array(n).fill(j);
+        }
+        return j;
+    })
+    if (!(joins.every(j => j.length === n && isJoin(j)))) {
         throw new Error('Each join must contain a number of string elements equal to the number of streams: ' + n);
     }
     if (joins.every(j => isJoin(j))) {
@@ -199,12 +179,8 @@ function isJoin(o) {
     return Array.isArray(o) && o.every(j => typeof j === 'string')
 }
 
-function isJoinDef(o) {
-    return typeof(o) === 'object' && o.join && o.join.every(j => isJoinSet(j));
-}
-
 function isStream(o) {
-    return o.pipe && o.on && typeof o.pipe === 'function' && typeof o.on === 'function';
+    return o && o.pipe && o.on && typeof o.pipe === 'function' && typeof o.on === 'function';
 }
 
 function isStreamDef(o) {
