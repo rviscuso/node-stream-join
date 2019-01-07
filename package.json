@@ -16,7 +16,8 @@
   "scripts": {
     "test": "node_modules/mocha/bin/mocha test"
   },
-  "author": "",
-  "license": "ISC",
-  "dependencies": {}
+  "author": "Ron Viscuso <rviscuso@hotmail.com>",
+  "license": "MIT",
+  "dependencies": {},
+  "keywords": ["node", "stream", "join", "concat", "sql"]
 }
