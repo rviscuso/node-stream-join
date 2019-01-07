@@ -1,4 +1,4 @@
-# node-steam-join
+# node-stream-join
 
 This package provides the ability to perform SQL-like joins in node streams.
 
