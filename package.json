@@ -1,6 +1,6 @@
 {
   "name": "node-stream-join",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "SQL-like join for streams",
   "main": "index.js",
   "directories": {
@@ -19,5 +19,11 @@
   "author": "Ron Viscuso <rviscuso@hotmail.com>",
   "license": "MIT",
   "dependencies": {},
-  "keywords": ["node", "stream", "join", "concat", "sql"]
+  "keywords": [
+    "node",
+    "stream",
+    "join",
+    "concat",
+    "sql"
+  ]
 }
