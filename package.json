@@ -1,6 +1,6 @@
 {
   "name": "node-stream-join",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "SQL-like join for streams",
   "repository": {
     "type": "git",
