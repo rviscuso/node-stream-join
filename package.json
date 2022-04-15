@@ -13,7 +13,7 @@
   "devDependencies": {
     "chai": "^4.2.0",
     "highland": "^2.13.0",
-    "mocha": "^5.2.0",
+    "mocha": "^9.2.2",
     "prettier": "^1.15.3"
   },
   "scripts": {
@@ -21,7 +21,6 @@
   },
   "author": "Ron Viscuso <rviscuso@hotmail.com>",
   "license": "MIT",
-  "dependencies": {},
   "keywords": [
     "node",
     "stream",
