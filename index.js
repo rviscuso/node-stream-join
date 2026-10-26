@@ -128,10 +128,6 @@ function handleStreamsArg(streams) {
                 stream: s
             }
         });
-        // Include the join field only for the left
-        for (let i = 1; i < streams.length; i++) {
-            streams[i].omitJoinField = true;
-        }
     }
     else if (!streams.every(s => isStreamDef(s))) {
         throw new Error(ERR_MSG);

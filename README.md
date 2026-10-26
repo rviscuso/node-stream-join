@@ -72,10 +72,10 @@ lastNames.push({lastName: 'Costanza', pid: 3});
 
 firstNames.push(null);
 lastNames.push(null);
-// { firstName: 'Cosmo', id: 1, lastName: 'Kramer' }
-// { firstName: 'Elaine', id: 2, lastName: 'Benes' }
-// { firstName: 'George', id: 3, lastName: 'Costanza' }
-// { firstName: 'Jerry', id: 4, lastName: 'Seinfeld' }
+// { firstName: 'Cosmo', id: 1, pid: 1, lastName: 'Kramer' }
+// { firstName: 'Elaine', id: 2, pid: 2, lastName: 'Benes' }
+// { firstName: 'George', id: 3, pid: 3, lastName: 'Costanza' }
+// { firstName: 'Jerry', id: 4, pid: 4, lastName: 'Seinfeld' }
 ```
 
 ### Composite Join On Different Fields
@@ -102,10 +102,10 @@ lastNames.push({fname: 'George', lname: 'Costanza', pid: 3});
 
 firstNames.push(null);
 lastNames.push(null);
-// { firstName: 'Cosmo', id: 1, pid: 1, lastName: 'Kramer' }
-// { firstName: 'Elaine', id: 2, pid: 2, lastName: 'Benes' }
-// { firstName: 'George', id: 3, pid: 3, lastName: 'Costanza' }
-// { firstName: 'Jerry', id: 4, pid: 4, lastName: 'Seinfeld' }
+// { firstName: 'Cosmo', lastName: 'Kramer', id: 1, fname: 'Cosmo', lname: 'Kramer', pid: 1 }
+// { firstName: 'Elaine', lastName: 'Benes', id: 2, fname: 'Elaine', lname: 'Benes', pid: 2 }
+// { firstName: 'George', lastName: 'Costanza', id: 3, fname: 'George', lname: 'Costanza', pid: 3 }
+// { firstName: 'Jerry', lastName: 'Seinfeld', id: 4, fname: 'Jerry', lname: 'Seinfeld', pid: 4 }
 ```
 
 ### Concatenation Only, no Join
@@ -145,4 +145,4 @@ By default, node-stream-join performs an inner join: a row is emitted only when 
 Setting nullable on a stream means that stream may be missing from a joined row, which turns the join into an outer join. For example, making the second of two streams nullable gives a left join: every row of the first stream is emitted, with the matching fields of the second stream when there is a match, including rows of the first stream whose join field is null. Join values of 0 and empty string are regular keys.
 
 ### omitJoinField (default: false)
-By default, the join fields will be part of each emitted object. You can overwrite this behavior for each stream by setting omitJoinField to true.
+By default, the join fields will be part of each emitted object. You can overwrite this behavior for each stream by setting omitJoinField to true. This applies to plain streams too: nothing is omitted unless you ask for it.

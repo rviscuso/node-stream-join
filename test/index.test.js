@@ -116,10 +116,10 @@ describe('readme', function () {
             .collect()
             .toPromise(Promise)
             .then(x => x.should.have.deep.members([
-                { firstName: 'Cosmo', id: 1, lastName: 'Kramer' },
-                { firstName: 'Elaine', id: 2, lastName: 'Benes' },
-                { firstName: 'George', id: 3, lastName: 'Costanza' },
-                { firstName: 'Jerry', id: 4, lastName: 'Seinfeld' },
+                { firstName: 'Cosmo', id: 1, lastName: 'Kramer', pid: 1 },
+                { firstName: 'Elaine', id: 2, lastName: 'Benes', pid: 2 },
+                { firstName: 'George', id: 3, lastName: 'Costanza', pid: 3 },
+                { firstName: 'Jerry', id: 4, lastName: 'Seinfeld', pid: 4 },
             ]))
     })
 
@@ -149,10 +149,10 @@ describe('readme', function () {
             .collect()
             .toPromise(Promise)
             .then(x => x.should.have.deep.members([
-                { firstName: 'Cosmo', id: 1, lastName: 'Kramer', pid: 1 },
-                { firstName: 'Elaine', id: 2, lastName: 'Benes', pid: 2 },
-                { firstName: 'George', id: 3, lastName: 'Costanza', pid: 3 },
-                { firstName: 'Jerry', id: 4, lastName: 'Seinfeld', pid: 4 },
+                { firstName: 'Cosmo', lastName: 'Kramer', id: 1, fname: 'Cosmo', lname: 'Kramer', pid: 1 },
+                { firstName: 'Elaine', lastName: 'Benes', id: 2, fname: 'Elaine', lname: 'Benes', pid: 2 },
+                { firstName: 'George', lastName: 'Costanza', id: 3, fname: 'George', lname: 'Costanza', pid: 3 },
+                { firstName: 'Jerry', lastName: 'Seinfeld', id: 4, fname: 'Jerry', lname: 'Seinfeld', pid: 4 },
             ]))
     })
 })
