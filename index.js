@@ -35,7 +35,9 @@ class GroupEmitter extends EventEmitter {
 
     constructor(emitConditionOnPut) {
         super();
-        this.groups = {};
+        // No prototype: join values come from data, and a key like '__proto__'
+        // must not resolve to Object.prototype (prototype pollution).
+        this.groups = Object.create(null);
         this.emitConditionOnPut = emitConditionOnPut ? emitConditionOnPut : group => false;
     }
 

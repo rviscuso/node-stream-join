@@ -280,4 +280,21 @@ describe('edge cases', function () {
             });
     });
 
+    it('does not pollute Object.prototype with a __proto__ join key', function () {
+        const left = _([{ id: '__proto__', a: 1 }]);
+        const right = _([{ id: '__proto__', b: 2 }]);
+
+        return _(join([left, right], 'id'))
+            .collect()
+            .toPromise(Promise)
+            .then(r => {
+                const polluted = Object.prototype.hasOwnProperty.call(Object.prototype, 0);
+                // Undo pollution before asserting, so a failure here can't break other tests
+                delete Object.prototype[0];
+                delete Object.prototype[1];
+                polluted.should.equal(false);
+                r.should.eql([{ id: '__proto__', a: 1, b: 2 }]);
+            });
+    });
+
 });
