@@ -92,7 +92,7 @@ function getGroups(concatdStream, streams, joins, emitConditionOnPut) {
         }
     });
 
-    concatdStream.on('error', err => t.emit(err));
+    concatdStream.on('error', err => t.emit('error', err));
 
     concatdStream.on('end', () => {
         if (!emitConditionOnPut) groups.emitAll();

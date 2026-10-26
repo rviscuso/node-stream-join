@@ -252,3 +252,19 @@ describe('join', function () {
     })
 
 });
+
+describe('edge cases', function () {
+
+    it('forwards errors from an input stream when joining', function (done) {
+        const s1 = new PassThrough({ objectMode: true });
+        const s2 = new PassThrough({ objectMode: true });
+
+        join([s1, s2], 'id').on('error', err => {
+            err.message.should.equal('boom');
+            done();
+        });
+
+        s1.emit('error', new Error('boom'));
+    });
+
+});
