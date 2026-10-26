@@ -78,7 +78,11 @@ function getGroups(concatdStream, streams, joins, emitConditionOnPut) {
             if (val[joins[i][idx]] == null) putGroup = false;
         }
         if (putGroup) {
-            groups.put(groupKey, idx, val)
+            // Composite keys are JSON-encoded so ['a,b', 'c'] and ['a', 'b,c'] stay apart
+            // (String(array) joins with commas). Single-field keys keep their old string
+            // form, so emit order is unchanged. String() keeps 1 and '1' matching, as before.
+            const key = groupKey.length === 1 ? String(groupKey[0]) : JSON.stringify(groupKey.map(String));
+            groups.put(key, idx, val)
         }
     });
 

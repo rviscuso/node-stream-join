@@ -297,4 +297,16 @@ describe('edge cases', function () {
             });
     });
 
+    it('does not match composite keys whose values contain commas', function () {
+        const left = _([{ f1: 'a,b', f2: 'c', side: 'L' }, { f1: 'x', f2: 'y', side: 'L' }]);
+        const right = _([{ f1: 'a', f2: 'b,c', other: 'R1' }, { f1: 'x', f2: 'y', other: 'R2' }]);
+
+        return _(join([left, right], ['f1', 'f2']))
+            .collect()
+            .toPromise(Promise)
+            .then(r => {
+                r.should.eql([{ f1: 'x', f2: 'y', side: 'L', other: 'R2' }]);
+            });
+    });
+
 });
