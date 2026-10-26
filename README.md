@@ -2,7 +2,7 @@
 
 This package provides the ability to perform SQL-like joins on node.js streams.
 
-[![Build Status](https://travis-ci.org/rviscuso/node-stream-join.svg?branch=master)](https://travis-ci.org/rviscuso/node-stream-join)
+[![test](https://github.com/rviscuso/node-stream-join/actions/workflows/test.yml/badge.svg)](https://github.com/rviscuso/node-stream-join/actions/workflows/test.yml)
 
 ## Usage
 
