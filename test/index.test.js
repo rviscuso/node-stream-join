@@ -85,7 +85,7 @@ describe('readme', function () {
         return _(joined)
             .collect()
             .toPromise(Promise)
-            .then(x => x.should.eql([
+            .then(x => x.should.have.deep.members([
                 { firstName: 'Cosmo', id: 1, lastName: 'Kramer' },
                 { firstName: 'Elaine', id: 2, lastName: 'Benes' },
                 { firstName: 'George', id: 3, lastName: 'Costanza' },
@@ -115,7 +115,7 @@ describe('readme', function () {
         return _(joined)
             .collect()
             .toPromise(Promise)
-            .then(x => x.should.eql([
+            .then(x => x.should.have.deep.members([
                 { firstName: 'Cosmo', id: 1, lastName: 'Kramer' },
                 { firstName: 'Elaine', id: 2, lastName: 'Benes' },
                 { firstName: 'George', id: 3, lastName: 'Costanza' },
@@ -148,7 +148,7 @@ describe('readme', function () {
         return _(joined)
             .collect()
             .toPromise(Promise)
-            .then(x => x.should.eql([
+            .then(x => x.should.have.deep.members([
                 { firstName: 'Cosmo', id: 1, lastName: 'Kramer', pid: 1 },
                 { firstName: 'Elaine', id: 2, lastName: 'Benes', pid: 2 },
                 { firstName: 'George', id: 3, lastName: 'Costanza', pid: 3 },
@@ -170,7 +170,7 @@ describe('join', function () {
             .toPromise(Promise)
             .then(r => {
                 r.length.should.equal(6);
-                r.map(x => x.name).should.eql(['Kramer', 'Kramer', 'Elaine', 'George', 'Newman', 'Jerry']);
+                r.map(x => x.name).sort().should.eql(['Kramer', 'Kramer', 'Elaine', 'George', 'Newman', 'Jerry'].sort());
             });
     });
 
@@ -180,7 +180,7 @@ describe('join', function () {
             .toPromise(Promise)
             .then(r => {
                 r.length.should.equal(6);
-                r.map(x => x.name).should.eql(['Kramer', 'Kramer', 'Elaine', 'George', 'Newman', 'Jerry']);
+                r.map(x => x.name).sort().should.eql(['Kramer', 'Kramer', 'Elaine', 'George', 'Newman', 'Jerry'].sort());
             });
     });
 
@@ -190,7 +190,7 @@ describe('join', function () {
             .toPromise(Promise)
             .then(r => {
                 r.length.should.equal(6);
-                r.map(x => x.name).should.eql(['Kramer', 'Kramer', 'Elaine', 'George', 'Newman', 'Jerry']);
+                r.map(x => x.name).sort().should.eql(['Kramer', 'Kramer', 'Elaine', 'George', 'Newman', 'Jerry'].sort());
             });
     });
 
@@ -200,7 +200,7 @@ describe('join', function () {
             .toPromise(Promise)
             .then(r => {
                 r.length.should.equal(5);
-                r.map(x => x.name).should.eql(['Kramer', 'Elaine', 'George', 'Newman', 'Jerry']);
+                r.map(x => x.name).sort().should.eql(['Kramer', 'Elaine', 'George', 'Newman', 'Jerry'].sort());
             });
     });
 
@@ -210,7 +210,7 @@ describe('join', function () {
             .toPromise(Promise)
             .then(r => {
                 r.length.should.equal(6);
-                r.map(x => x.name).should.eql(['Kramer', 'Kramer', 'Elaine', 'George', 'Newman', 'Jerry']);
+                r.map(x => x.name).sort().should.eql(['Kramer', 'Kramer', 'Elaine', 'George', 'Newman', 'Jerry'].sort());
             });
     });
 
@@ -220,7 +220,7 @@ describe('join', function () {
             .toPromise(Promise)
             .then(r => {
                 r.length.should.equal(5);
-                r.map(x => x.name).should.eql(['Kramer', 'Elaine', 'George', 'Newman', 'Jerry']);
+                r.map(x => x.name).sort().should.eql(['Kramer', 'Elaine', 'George', 'Newman', 'Jerry'].sort());
             });
     });
 
@@ -233,7 +233,7 @@ describe('join', function () {
             .toPromise(Promise)
             .then(r => {
                 r.length.should.equal(8);
-                r.map(x => x.name).should.eql(['Kramer', 'Kramer', 'Kramer', 'Elaine', 'George', 'Newman', 'Jerry', 'Frank']);
+                r.map(x => x.name).sort().should.eql(['Kramer', 'Kramer', 'Kramer', 'Elaine', 'George', 'Newman', 'Jerry', 'Frank'].sort());
                 // Note Cosmo gets overwritten by Kramer since they have the same SSN, so this is correct
             });
     });
@@ -341,6 +341,50 @@ describe('edge cases', function () {
                     { id: 1, a: 'x', b: 'y' },
                     { id: null, a: 'n' },
                     { a: 'u' },
+                ]);
+            });
+    });
+
+});
+describe('early emit', function () {
+
+    it('emits a match before the input streams end', function (done) {
+        const left = new PassThrough({ objectMode: true });
+        const right = new PassThrough({ objectMode: true });
+
+        join([left, right], 'id').once('data', row => {
+            row.should.eql({ id: 1, a: 'x', b: 'y' });
+            done();
+        });
+
+        // Neither stream ends: the joined row must arrive anyway
+        left.push({ id: 1, a: 'x' });
+        right.push({ id: 1, b: 'y' });
+    });
+
+    it('emits each combination once when later rows join an emitted group', function () {
+        const left = new PassThrough({ objectMode: true });
+        const right = new PassThrough({ objectMode: true });
+
+        const joined = join([left, right], 'id');
+
+        left.push({ id: 1, a: 1 });
+        right.push({ id: 1, b: 1 });
+        left.push({ id: 1, a: 2 });
+        right.push({ id: 1, b: 2 });
+        left.push(null);
+        right.push(null);
+
+        return _(joined)
+            .collect()
+            .toPromise(Promise)
+            .then(r => {
+                r.length.should.equal(4);
+                r.should.have.deep.members([
+                    { id: 1, a: 1, b: 1 },
+                    { id: 1, a: 1, b: 2 },
+                    { id: 1, a: 2, b: 1 },
+                    { id: 1, a: 2, b: 2 },
                 ]);
             });
     });

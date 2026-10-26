@@ -12,6 +12,16 @@ const join = require('node-stream-join');
 const joinedStream = join(<streams> , <joinConditions>)
 ```
 
+### When rows are emitted
+
+Joined rows are emitted as soon as they are known, without waiting for the input streams to end:
+
+- A row is emitted as soon as its join key has a match in every stream. If more matching rows arrive later, only the new combinations are emitted.
+- Unmatched rows of an outer join (see `nullable`) are emitted when the input streams end, because only then is it certain that no match will arrive. A row whose join field is null or undefined can never match, so it is emitted right away.
+- If any stream uses `squash`, the whole join is emitted when the input streams end, because squashing needs every match.
+
+Output order follows when each match completes, not the order of the input. Every row seen so far is kept in memory until the input streams end, since a later row can still match it.
+
 ## Examples
 
 ### Simple Join On Same Key
@@ -127,10 +137,12 @@ To use all defaults, simply provide the stream as the first argument. To use non
 When set for a given stream, the join output will add a container object around the fields from that stream
 
 ### squash (default: false)
-By default, if a given stream has more than one join match on the other streams, each match will be emitted separately. With this options, all matches in a given stream will be emitted only once, with fields with different values contained inside an array.
+By default, if a given stream has more than one join match on the other streams, each match will be emitted separately. With this option, all matches in a given stream will be emitted only once, with fields with different values contained inside an array.
 
 ### nullable (default: false)
-By default, node-stream-join performs an inner join, i.e. objects with null join fields will not be emitted. The nullable option turns it into an outer join, i.e. objects with the join field null will be emitted.
+By default, node-stream-join performs an inner join: a row is emitted only when its join key has a match in every stream, so rows without a match, including rows whose join field is null or undefined, are dropped.
+
+Setting nullable on a stream means that stream may be missing from a joined row, which turns the join into an outer join. For example, making the second of two streams nullable gives a left join: every row of the first stream is emitted, with the matching fields of the second stream when there is a match, including rows of the first stream whose join field is null. Join values of 0 and empty string are regular keys.
 
 ### omitJoinField (default: false)
 By default, the join fields will be part of each emitted object. You can overwrite this behavior for each stream by setting omitJoinField to true.

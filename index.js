@@ -1,7 +1,6 @@
 
-const EventEmitter = require('events').EventEmitter;
 const PassThrough = require('stream').PassThrough;
-const { squash, flatten, cartesian } = require('./array-utils');
+const { squash, cartesian } = require('./array-utils');
 
 function concat(streams, addIndex) {
     let t = new PassThrough({ objectMode: true });
@@ -31,42 +30,30 @@ module.exports = (streams, joins) => {
     return getGroups(concatdStream, streams, joins.map(j => j.join));
 };
 
-class GroupEmitter extends EventEmitter {
-
-    constructor(emitConditionOnPut) {
-        super();
-        // No prototype: join values come from data, and a key like '__proto__'
-        // must not resolve to Object.prototype (prototype pollution).
-        this.groups = Object.create(null);
-        this.emitConditionOnPut = emitConditionOnPut ? emitConditionOnPut : group => false;
-    }
-
-    put(group, index, value) {
-        if (!this.groups[group]) this.groups[group] = [];
-        let currVal = this.groups[group][index];
-        if (currVal) {
-            if (!Array.isArray(currVal)) {
-                this.groups[group][index] = [currVal];
-            }
-            this.groups[group][index].push(value);
-        }
-        else {
-            this.groups[group][index] = value
-        }
-        if (this.emitConditionOnPut(this.groups[group])) this.emit('data', this.groups[group])
-    }
-
-    emitAll() {
-        Object.keys(this.groups).forEach(g => {
-            this.emit('data', this.groups[g]);
-        })
-    }
-}
-
-function getGroups(concatdStream, streams, joins, emitConditionOnPut) {
-    let groups = new GroupEmitter(emitConditionOnPut);
+function getGroups(concatdStream, streams, joins) {
+    const n = streams.length;
     let t = new PassThrough({ objectMode: true });
-    const unkeyed = [];
+    // group key -> one array of rows per stream. Rows are kept until the end, because
+    // a later row can still match them. No prototype: keys come from data, and a key
+    // like '__proto__' must not resolve to Object.prototype (prototype pollution).
+    const groups = Object.create(null);
+    // squash merges all of a stream's matches into one row, so it needs every row
+    // first: joins with a squash stream emit everything at the end.
+    const deferAll = streams.some(s => s.squash);
+
+    const isComplete = group => group.every(rows => rows.length > 0);
+    const push = slots => cartesian(slots).forEach(g => t.push(formatGroupForEmit(g, streams, joins)));
+
+    // Final emit of a group: unmatched (outer) rows, squashed rows, or deferred groups
+    const emitFinal = group => {
+        if (!shouldEmit(group, streams)) return;
+        push(group.map((rows, i) => {
+            // undefined keeps the slot, so each row stays aligned with its own stream
+            if (rows.length === 0) return [undefined];
+            if (streams[i].squash) return [squash(rows)];
+            return rows;
+        }));
+    };
 
     concatdStream.on('data', x => {
         let idx = x[0];
@@ -78,62 +65,46 @@ function getGroups(concatdStream, streams, joins, emitConditionOnPut) {
             // Only null/undefined mean "no join value"; 0 and '' are real keys.
             if (val[joins[i][idx]] == null) putGroup = false;
         }
-        if (putGroup) {
-            // Composite keys are JSON-encoded so ['a,b', 'c'] and ['a', 'b,c'] stay apart
-            // (String(array) joins with commas). Single-field keys keep their old string
-            // form, so emit order is unchanged. String() keeps 1 and '1' matching, as before.
-            const key = groupKey.length === 1 ? String(groupKey[0]) : JSON.stringify(groupKey.map(String));
-            groups.put(key, idx, val)
+        if (!putGroup) {
+            // A null join key never matches, so the row is its own unmatched group and
+            // can be emitted now. shouldEmit() keeps it only if every other stream is
+            // nullable (outer join).
+            const group = Array.from({ length: n }, () => []);
+            group[idx].push(val);
+            emitFinal(group);
+            return;
         }
-        else {
-            // A null join key never matches, so the row is its own unmatched group.
-            // shouldEmit() keeps it only if every other stream is nullable (outer join).
-            const group = [];
-            group[idx] = val;
-            unkeyed.push(group);
-        }
-    });
-
-    groups.on('data', group => {
-        if (shouldEmit(group, streams)) {
-            // Fill missing streams with undefined instead of leaving holes: cartesian()
-            // uses reduce, which skips holes and would shift rows onto the wrong stream.
-            group = Array.from({ length: streams.length }, (_, i) => group[i]);
-            group = group.map((g, i) => {
-                if (Array.isArray(g)) {
-                    if (streams[i].squash) return squash(g);
-                }
-                return g;
-            });
-            let splitGroups = cartesian(group);
-            splitGroups.forEach(g => t.push(formatGroupForEmit(g, streams, joins)))
+        // Composite keys are JSON-encoded so ['a,b', 'c'] and ['a', 'b,c'] stay apart
+        // (String(array) joins with commas). Single-field keys keep their old string
+        // form. String() keeps 1 and '1' matching, as before.
+        const key = groupKey.length === 1 ? String(groupKey[0]) : JSON.stringify(groupKey.map(String));
+        if (!groups[key]) groups[key] = Array.from({ length: n }, () => []);
+        const group = groups[key];
+        group[idx].push(val);
+        if (!deferAll && isComplete(group)) {
+            // Emit as soon as every stream has a match, but only the combinations that
+            // include the new row: the others were emitted when their rows arrived.
+            push(group.map((rows, i) => i === idx ? [val] : rows));
         }
     });
 
     concatdStream.on('error', err => t.emit('error', err));
 
     concatdStream.on('end', () => {
-        if (!emitConditionOnPut) groups.emitAll();
-        unkeyed.forEach(g => groups.emit('data', g));
-        setImmediate(() => groups.removeAllListeners());
+        Object.keys(groups).forEach(key => {
+            const group = groups[key];
+            // Complete groups were already emitted as rows arrived, unless deferred
+            if (deferAll || !isComplete(group)) emitFinal(group);
+        });
         setImmediate(() => t.push(null));
     });
 
     return t;
 }
 
+// Emit a group when every stream has a row, or every stream without one is nullable
 function shouldEmit(group, streams) {
-
-    let mkeys = missingKeys(group, streams.length);
-    return mkeys.length === 0 || mkeys.every(k => streams[k].nullable);
-
-    function missingKeys(group, n) {
-        let res = [];
-        for (let i = 0; i < n; i++) {
-            if (!group[i]) res.push(i);
-        }
-        return res;
-    }
+    return group.every((rows, i) => rows.length > 0 || streams[i].nullable);
 }
 
 function formatGroupForEmit(group, streams, joins) {
