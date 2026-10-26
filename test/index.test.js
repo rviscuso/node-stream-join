@@ -390,3 +390,18 @@ describe('early emit', function () {
     });
 
 });
+
+describe('join fields', function () {
+
+    it('ignores inherited properties as join values', function () {
+        const left = _([{ a: 1 }]);
+        const right = _([{ b: 2 }]);
+
+        // 'constructor' is inherited from Object.prototype, not a field of these rows
+        return _(join([left, right], 'constructor'))
+            .collect()
+            .toPromise(Promise)
+            .then(r => r.should.eql([]));
+    });
+
+});

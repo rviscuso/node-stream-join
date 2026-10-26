@@ -61,9 +61,10 @@ function getGroups(concatdStream, streams, joins) {
         let groupKey = [];
         let putGroup = true;
         for (let i = 0; i < joins.length; i++) {
-            groupKey.push(val[joins[i][idx]]);
+            const value = getField(val, joins[i][idx]);
+            groupKey.push(value);
             // Only null/undefined mean "no join value"; 0 and '' are real keys.
-            if (val[joins[i][idx]] == null) putGroup = false;
+            if (value == null) putGroup = false;
         }
         if (!putGroup) {
             // A null join key never matches, so the row is its own unmatched group and
@@ -160,6 +161,14 @@ function handleJoins(joins, streams) {
         throw new Error('joins must be an array of arrays or join objects.');
     }
     return joins;
+}
+
+const hasOwn = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
+
+// Own properties only: an inherited one like 'constructor' would give every row
+// the same join value, so rows without the field would all match each other.
+function getField(row, field) {
+    return row != null && hasOwn(row, field) ? row[field] : undefined;
 }
 
 function isJoin(o) {
