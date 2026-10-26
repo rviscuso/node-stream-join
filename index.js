@@ -113,7 +113,7 @@ function formatGroupForEmit(group, streams, joins) {
         (m, c, i) => {
             if (c === undefined) return m; // no row from this (nullable) stream
             let d = Object.assign({}, c);
-            if (streams[i].omitJoinField) joins.forEach(j => delete d[j[i]]);
+            if (streams[i].omitJoinField) joins.forEach(j => { d = omitField(d, j[i]); });
             return Object.assign(m, streams[i].alias ? { [streams[i].alias]: d } : d)
         },
         {}
@@ -165,10 +165,36 @@ function handleJoins(joins, streams) {
 
 const hasOwn = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
 
+// A join field is a key, or a path like 'user.id' or 'items[0].sku' (#3). A key that
+// exists exactly as written wins, so fields whose names contain dots keep working.
+function fieldPath(row, field) {
+    if (row != null && hasOwn(row, field)) return [field];
+    return field.replace(/\[(\d+)\]/g, '.$1').split('.');
+}
+
 // Own properties only: an inherited one like 'constructor' would give every row
 // the same join value, so rows without the field would all match each other.
 function getField(row, field) {
-    return row != null && hasOwn(row, field) ? row[field] : undefined;
+    let value = row;
+    for (const key of fieldPath(row, field)) {
+        if (value == null || typeof value !== 'object' || !hasOwn(value, key)) return undefined;
+        value = value[key];
+    }
+    return value;
+}
+
+// Copy of row without the field. Objects along a path are copied, never changed,
+// because they belong to the caller's input rows.
+function omitField(row, field) {
+    return omitPath(row, fieldPath(row, field));
+}
+
+function omitPath(value, keys) {
+    if (value == null || typeof value !== 'object' || !hasOwn(value, keys[0])) return value;
+    const copy = Array.isArray(value) ? value.slice() : Object.assign({}, value);
+    if (keys.length === 1) delete copy[keys[0]];
+    else copy[keys[0]] = omitPath(value[keys[0]], keys.slice(1));
+    return copy;
 }
 
 function isJoin(o) {

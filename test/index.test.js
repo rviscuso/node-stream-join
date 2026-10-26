@@ -404,4 +404,48 @@ describe('join fields', function () {
             .then(r => r.should.eql([]));
     });
 
+    it('joins on nested field paths', function () {
+        const left = _([{ user: { id: 1 }, a: 'x' }, { user: { id: 2 }, a: 'z' }]);
+        const right = _([{ owner: { id: 1 }, b: 'y' }, { owner: {}, b: 'w' }]);
+
+        return _(join([left, right], [['user.id', 'owner.id']]))
+            .collect()
+            .toPromise(Promise)
+            .then(r => r.should.eql([{ user: { id: 1 }, a: 'x', owner: { id: 1 }, b: 'y' }]));
+    });
+
+    it('joins on array index paths', function () {
+        const left = _([{ items: [{ sku: 'A1' }], a: 'x' }]);
+        const right = _([{ sku: 'A1', b: 'y' }]);
+
+        return _(join([left, right], [['items[0].sku', 'sku']]))
+            .collect()
+            .toPromise(Promise)
+            .then(r => r.should.eql([{ items: [{ sku: 'A1' }], a: 'x', sku: 'A1', b: 'y' }]));
+    });
+
+    it('prefers a key containing a dot over a path', function () {
+        const left = _([{ 'a.b': 1, a: { b: 2 }, side: 'L' }]);
+        const right = _([{ 'a.b': 1, other: 'R' }]);
+
+        return _(join([left, right], 'a.b'))
+            .collect()
+            .toPromise(Promise)
+            .then(r => r.should.eql([{ 'a.b': 1, a: { b: 2 }, side: 'L', other: 'R' }]));
+    });
+
+    it('omits a nested join field without changing the input row', function () {
+        const rightRow = { owner: { id: 1, name: 'n' }, b: 'y' };
+        const left = _([{ id: 1, a: 'x' }]);
+        const right = _([rightRow]);
+
+        return _(join([{ stream: left }, { stream: right, omitJoinField: true }], [['id', 'owner.id']]))
+            .collect()
+            .toPromise(Promise)
+            .then(r => {
+                r.should.eql([{ id: 1, a: 'x', owner: { name: 'n' }, b: 'y' }]);
+                rightRow.should.eql({ owner: { id: 1, name: 'n' }, b: 'y' });
+            });
+    });
+
 });

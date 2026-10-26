@@ -130,6 +130,17 @@ letters.push(null);
 // {value: 'b'}
 ```
 
+### Nested Join Fields
+
+A join field can be a path into nested objects and arrays, in the style of lodash `get`:
+
+```javascript
+join([orders, users], [['customer.id', 'id']])      // orders.customer.id === users.id
+join([orders, products], [['items[0].sku', 'sku']]) // first item's sku
+```
+
+If a row has a key exactly as written (for example a field literally named `customer.id`), that key is used instead of the path. Only a row's own properties are read, never inherited ones. With `omitJoinField`, a nested join field is removed from a copy of the row; the input objects are not changed.
+
 ## Stream Options
 To use all defaults, simply provide the stream as the first argument. To use non-defaults, provide instead an object with a stream field (mandatory) and any of the options below:
 
