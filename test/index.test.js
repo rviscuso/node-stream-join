@@ -327,4 +327,22 @@ describe('edge cases', function () {
             });
     });
 
+    it('emits rows with a null join key when the other streams are nullable', function () {
+        const left = _([{ id: 1, a: 'x' }, { id: null, a: 'n' }, { a: 'u' }]);
+        const right = _([{ id: 1, b: 'y' }, { b: 'z' }]);
+
+        // right is nullable, left is not: left's null-key rows are kept (left outer join),
+        // right's null-key row is dropped
+        return _(join([{ stream: left }, { stream: right, nullable: true }], 'id'))
+            .collect()
+            .toPromise(Promise)
+            .then(r => {
+                r.should.have.deep.members([
+                    { id: 1, a: 'x', b: 'y' },
+                    { id: null, a: 'n' },
+                    { a: 'u' },
+                ]);
+            });
+    });
+
 });

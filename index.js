@@ -66,6 +66,7 @@ class GroupEmitter extends EventEmitter {
 function getGroups(concatdStream, streams, joins, emitConditionOnPut) {
     let groups = new GroupEmitter(emitConditionOnPut);
     let t = new PassThrough({ objectMode: true });
+    const unkeyed = [];
 
     concatdStream.on('data', x => {
         let idx = x[0];
@@ -83,6 +84,13 @@ function getGroups(concatdStream, streams, joins, emitConditionOnPut) {
             // form, so emit order is unchanged. String() keeps 1 and '1' matching, as before.
             const key = groupKey.length === 1 ? String(groupKey[0]) : JSON.stringify(groupKey.map(String));
             groups.put(key, idx, val)
+        }
+        else {
+            // A null join key never matches, so the row is its own unmatched group.
+            // shouldEmit() keeps it only if every other stream is nullable (outer join).
+            const group = [];
+            group[idx] = val;
+            unkeyed.push(group);
         }
     });
 
@@ -106,6 +114,7 @@ function getGroups(concatdStream, streams, joins, emitConditionOnPut) {
 
     concatdStream.on('end', () => {
         if (!emitConditionOnPut) groups.emitAll();
+        unkeyed.forEach(g => groups.emit('data', g));
         setImmediate(() => groups.removeAllListeners());
         setImmediate(() => t.push(null));
     });
