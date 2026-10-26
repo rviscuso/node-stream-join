@@ -72,7 +72,8 @@ function getGroups(concatdStream, streams, joins, emitConditionOnPut) {
         let putGroup = true;
         for (let i = 0; i < joins.length; i++) {
             groupKey.push(val[joins[i][idx]]);
-            if (!val[joins[i][idx]]) putGroup = false;
+            // Only null/undefined mean "no join value"; 0 and '' are real keys.
+            if (val[joins[i][idx]] == null) putGroup = false;
         }
         if (putGroup) {
             groups.put(groupKey, idx, val)

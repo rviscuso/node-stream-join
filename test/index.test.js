@@ -267,4 +267,17 @@ describe('edge cases', function () {
         s1.emit('error', new Error('boom'));
     });
 
+    it('joins on falsy keys like 0 and empty string', function () {
+        const left = _([{ id: 0, a: 'zero' }, { id: '', a: 'empty' }, { id: 1, a: 'one' }]);
+        const right = _([{ id: 0, b: 'ZERO' }, { id: '', b: 'EMPTY' }, { id: 1, b: 'ONE' }]);
+
+        return _(join([left, right], 'id'))
+            .collect()
+            .toPromise(Promise)
+            .then(r => {
+                r.length.should.equal(3);
+                r.map(x => x.a + x.b).sort().should.eql(['emptyEMPTY', 'oneONE', 'zeroZERO']);
+            });
+    });
+
 });
