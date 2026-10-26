@@ -72,10 +72,10 @@ lastNames.push({lastName: 'Costanza', pid: 3});
 
 firstNames.push(null);
 lastNames.push(null);
-// { firstName: 'Cosmo', id: 1, pid: 1, lastName: 'Kramer' }
-// { firstName: 'Elaine', id: 2, pid: 2, lastName: 'Benes' }
-// { firstName: 'George', id: 3, pid: 3, lastName: 'Costanza' }
-// { firstName: 'Jerry', id: 4, pid: 4, lastName: 'Seinfeld' }
+// { firstName: 'Cosmo', id: 1, lastName: 'Kramer' }
+// { firstName: 'Elaine', id: 2, lastName: 'Benes' }
+// { firstName: 'George', id: 3, lastName: 'Costanza' }
+// { firstName: 'Jerry', id: 4, lastName: 'Seinfeld' }
 ```
 
 ### Composite Join On Different Fields
