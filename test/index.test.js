@@ -309,4 +309,22 @@ describe('edge cases', function () {
             });
     });
 
+    it('keeps an unmatched row under its own stream alias', function () {
+        const left = _([{ id: 1, a: 'x' }]);
+        const right = _([{ id: 2, b: 'y' }]);
+
+        return _(join(
+            [{ stream: left, alias: 'L', nullable: true }, { stream: right, alias: 'R', nullable: true }],
+            'id'
+        ))
+            .collect()
+            .toPromise(Promise)
+            .then(r => {
+                r.should.have.deep.members([
+                    { L: { id: 1, a: 'x' } },
+                    { R: { id: 2, b: 'y' } },
+                ]);
+            });
+    });
+
 });

@@ -88,6 +88,9 @@ function getGroups(concatdStream, streams, joins, emitConditionOnPut) {
 
     groups.on('data', group => {
         if (shouldEmit(group, streams)) {
+            // Fill missing streams with undefined instead of leaving holes: cartesian()
+            // uses reduce, which skips holes and would shift rows onto the wrong stream.
+            group = Array.from({ length: streams.length }, (_, i) => group[i]);
             group = group.map((g, i) => {
                 if (Array.isArray(g)) {
                     if (streams[i].squash) return squash(g);
@@ -127,6 +130,7 @@ function shouldEmit(group, streams) {
 function formatGroupForEmit(group, streams, joins) {
     return group.reduce(
         (m, c, i) => {
+            if (c === undefined) return m; // no row from this (nullable) stream
             let d = Object.assign({}, c);
             if (streams[i].omitJoinField) joins.forEach(j => delete d[j[i]]);
             return Object.assign(m, streams[i].alias ? { [streams[i].alias]: d } : d)
