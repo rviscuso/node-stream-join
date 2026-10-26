@@ -11,13 +11,12 @@
     "test": "test"
   },
   "devDependencies": {
-    "chai": "^4.2.0",
-    "highland": "^2.13.0",
-    "mocha": "^9.2.2",
-    "prettier": "^1.15.3"
+    "chai": "^6.3.0",
+    "highland": "^2.13.5",
+    "mocha": "^12.0.3"
   },
   "scripts": {
-    "test": "node_modules/mocha/bin/mocha test"
+    "test": "mocha test"
   },
   "author": "Ron Viscuso <rviscuso@hotmail.com>",
   "license": "MIT",
